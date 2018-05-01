@@ -6,6 +6,7 @@ from bottle import template, Bottle, request, response
 import json
 import os
 import sys
+import time
 from causal_paths.src.causpaths import DirectedPaths
 from gevent.pywsgi import WSGIServer
 from geventwebsocket.handler import WebSocketHandler
@@ -56,6 +57,7 @@ def find_directed_path_directed_post():
 
             uuid = query_string['uuid']
 
+            print('Getting reference network %s from %s' % (server, uuid))
             network, original_edge_map = get_reference_network(uuid, server)
             uuid = None
         else:
@@ -91,6 +93,7 @@ def find_directed_path_directed_post():
     #==================================
     if('source' in query_string.keys() and len(query_string['source']) > 0):
         source = query_string['source'].split(",")
+        print('Using source: %s' % source)
     else:
         response.status = 400
         response.content_type = 'application/json'
@@ -102,6 +105,7 @@ def find_directed_path_directed_post():
     #==================================
     if('target' in query_string.keys() and len(query_string['target']) > 0):
         target = query_string['target'].split(",")
+        print('Using target: %s' % target)
     else:
         response.status = 400
         response.content_type = 'application/json'
@@ -124,6 +128,7 @@ def find_directed_path_directed_post():
 
     return_paths = None
 
+    print('Starting directed path finding')
     if('relationtypes' in query_string.keys() and len(query_string['relationtypes']) > 0):
         relation_types = query_string['relationtypes'].split()
         return_paths = directedPaths.findDirectedPaths(network, original_edge_map, source, target, npaths=pathnum,
@@ -143,14 +148,24 @@ def get_preference_schedule():
     return dict(data=return_dict)
 
 def get_reference_network(uuid, host):
-    if ref_networks.get(uuid) is None:
+    if uuid not in ref_networks:
+        ts = time.time()
+        print('Downloading reference network graph from NDEx')
         G = NdexGraph(server=host, uuid=uuid)
+        te = time.time()
+        print('Getting network took %.2fs' % (te - ts))
 
         ref_networks[uuid] = G
+        return G, G.edge
     else:
         print "INFO: using cached network."
-
-    return deepcopy(ref_networks.get(uuid)), ref_networks.get(uuid).edge
+        G = ref_networks[uuid]
+        ts = time.time()
+        print('Copying reference network graph')
+        G_copy = deepcopy(G)
+        te = time.time()
+        print('Deep copy took %.2fs' % (te - ts))
+        return G_copy, G.edge
 
 # run the web server
 def main():
@@ -158,6 +173,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('port', nargs='?', type=int, help='HTTP port', default=5603)
     args = parser.parse_args()
+
+    # Load the reference network first
+    get_reference_network('04020c47-4cfd-11e8-a4bf-0ac135e8bacf',
+                          'http://public.ndexbio.org')
 
     print 'starting web server on port %s' % args.port
     print 'press control-c to quit'
