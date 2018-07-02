@@ -60,11 +60,12 @@ def indra_causality(netn_obj,two_way_edgetypes):
     # types where causality could go both ways
     #==========================================
     add_reverse_edges=[]
-    for e in netn_obj.edges_iter(data='interaction'):
+    for e in netn_obj.edges_iter(data=True):
         if e[2] in two_way_edgetypes:
             add_reverse_edges.append(e)
     for e2 in add_reverse_edges:
-        netn_obj.add_edge_between(e2[1],e2[0],interaction=e2[2])
+        netn_obj.add_edge_between(e2[1],e2[0],interaction=e2[2]['interaction'],
+                                  attr_dict=e[2])
 
 def filter_edges(netn_obj,relation_types):
     for e in netn_obj.edges_iter(data='interaction', keys=True):

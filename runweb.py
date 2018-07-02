@@ -149,10 +149,22 @@ def get_preference_schedule():
 
 def get_reference_network(uuid, host):
     if uuid not in ref_networks:
+        import os
+        import pickle
         ts = time.time()
-        print('Downloading reference network graph from NDEx')
-        G = NdexGraph(server=host, uuid=uuid)
-        te = time.time()
+        pklname = '%s.pkl' % uuid
+        if not os.path.exists(pklname):
+            print('Downloading reference network graph from NDEx')
+            G = NdexGraph(server=host, uuid=uuid)
+            print('Dumping reference network graph into pickle')
+            with open(pklname, 'wb') as fh:
+                pickle.dump(G, fh)
+            te = time.time()
+        else:
+            print('Loading reference network graph from pickle')
+            with open(pklname, 'rb') as fh:
+                G = pickle.load(fh)
+            te = time.time()
         print('Getting network took %.2fs' % (te - ts))
 
         ref_networks[uuid] = G
@@ -175,7 +187,9 @@ def main():
     args = parser.parse_args()
 
     # Load the reference network first
-    get_reference_network('04020c47-4cfd-11e8-a4bf-0ac135e8bacf',
+    #get_reference_network('04020c47-4cfd-11e8-a4bf-0ac135e8bacf',
+    #                      'http://public.ndexbio.org')
+    get_reference_network('50e3dff7-133e-11e6-a039-06603eb7f303',
                           'http://public.ndexbio.org')
 
     print 'starting web server on port %s' % args.port
